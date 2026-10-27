@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Styly",
+    "slug": "styly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/styly-logo.png",
+    "scheme": "styly",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "icon": "./assets/expo.icon"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F3EE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/styly-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#090909",
+          "image": "./assets/images/styly-logo.png",
+          "imageWidth": 76
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
