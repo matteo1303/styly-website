@@ -26,6 +26,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Styly usa la foto scelta per aggiungere un capo al tuo guardaroba privato.",
+          "cameraPermission": "Styly usa la fotocamera per fotografare i capi che vuoi salvare.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#090909",

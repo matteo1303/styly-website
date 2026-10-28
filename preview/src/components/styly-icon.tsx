@@ -12,7 +12,7 @@ const paths: Record<StylyIconName, string> = {
   camera: '<path d="M4 8h3l1.5-2h7L17 8h3v10H4Z"/><circle cx="12" cy="13" r="3.3"/><path d="M17.5 10.2h.01"/>',
 };
 
-const fallback: Record<StylyIconName, string> = { home: '▦', wardrobe: '⌁', style: '✦', laundry: '♢', profile: '○', camera: '◇' };
+const fallback: Record<StylyIconName, string> = { home: 'H', wardrobe: 'A', style: 'S', laundry: 'L', profile: 'P', camera: 'Foto' };
 
 export function StylyIcon({ name, color = '#87858B', size = 22, active = false }: { name: StylyIconName; color?: string; size?: number; active?: boolean }) {
   if (Platform.OS !== 'web') return <Text style={{ color, fontSize: size }}>{fallback[name]}</Text>;

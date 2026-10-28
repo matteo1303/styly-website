@@ -1,45 +1,50 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StylyColors as C } from '@/constants/styly-theme';
-import { useDemo } from '@/state/demo-context';
+import { useAuth } from '@/state/auth-context';
+import { useOutfits } from '@/state/outfits-context';
+import { useProfile } from '@/state/profile-context';
+import { useWardrobe } from '@/state/wardrobe-context';
 
-const styleOptions=['Casual','Smart casual','Minimal','Streetwear','Elegante'];
-const sizeOptions=['XS','S','M','L','XL'];
-const colorOptions=['Nero','Blu','Crema','Verde','Bordeaux'];
-const languages=['Italiano','English','Español','Français'];
-
-function ChoiceRow({label,options,value,onChange}:{label:string;options:string[];value:string;onChange:(value:string)=>void}){
-  return <View style={s.choiceBlock}><Text style={s.choiceLabel}>{label}</Text><View style={s.chips}>{options.map(option=><Pressable accessibilityRole="button" key={option} onPress={()=>onChange(option)} style={[s.chip,value===option&&s.chipOn]}><Text style={[s.chipText,value===option&&s.chipTextOn]}>{option}</Text></Pressable>)}</View></View>;
-}
+const styleOptions = ['Casual', 'Smart casual', 'Minimal', 'Streetwear', 'Elegante'];
 
 export default function ProfileScreen() {
-  const { savedLookIds, wornCount, totalSpend } = useDemo();
-  const [name,setName]=useState('Matteo'); const [editing,setEditing]=useState(false); const [customizing,setCustomizing]=useState(false); const [languageOpen,setLanguageOpen]=useState(false); const [stylistOn,setStylistOn]=useState(true);
-  const [style,setStyle]=useState('Smart casual'); const [size,setSize]=useState('M'); const [color,setColor]=useState('Blu'); const [fit,setFit]=useState('Comoda'); const [language,setLanguage]=useState('Italiano');
+  const { user, signOut } = useAuth();
+  const { profile, loading, updateProfile } = useProfile();
+  const { garments } = useWardrobe();
+  const { outfits } = useOutfits();
+  const [name, setName] = useState(profile?.displayName ?? '');
+  const [style, setStyle] = useState(profile?.preferences.styles[0] ?? 'Smart casual');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const save = async () => {
+    if (!user || !profile || !name.trim()) return;
+    setSaving(true); setMessage(null);
+    try {
+      await updateProfile(name.trim(), { ...profile.preferences, styles: [style], onboardingCompleted: true });
+      setMessage('Profilo aggiornato.');
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'Profilo non aggiornato.');
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <SafeAreaView style={s.safe}><View style={s.loading}><ActivityIndicator color={C.sage}/></View></SafeAreaView>;
+
   return <SafeAreaView style={s.safe} edges={['top']}><ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
-    <View style={s.header}><Text style={s.context}>Account e preferenze</Text><Text style={s.title}>Il tuo profilo</Text><Text style={s.subtitle}>Qui Styly impara come ti vesti e rende i consigli più personali.</Text></View>
-    <View style={s.identity}><View style={s.avatar}><Text style={s.initial}>{name.slice(0,1).toUpperCase()}</Text></View><View style={s.identityCopy}><Text style={s.name}>{name}</Text><Text style={s.mail}>Profilo personale</Text></View><Pressable accessibilityRole="button" onPress={()=>setEditing(value=>!value)} style={s.textButton}><Text style={s.textButtonLabel}>{editing?'Chiudi':'Modifica'}</Text></Pressable></View>
-    {editing?<View style={s.editor}><Text style={s.fieldLabel}>Nome visualizzato</Text><TextInput value={name} onChangeText={setName} style={s.input}/><Pressable accessibilityRole="button" onPress={()=>setEditing(false)} style={s.save}><Text style={s.saveText}>Salva modifiche</Text></Pressable></View>:null}
-    <View style={s.stats}><View style={s.stat}><Text style={s.number}>{wornCount}</Text><Text style={s.statLabel}>indossati</Text></View><View style={s.stat}><Text style={s.number}>{savedLookIds.length}</Text><Text style={s.statLabel}>salvati</Text></View><View style={s.stat}><Text style={s.number}>48</Text><Text style={s.statLabel}>capi</Text></View></View>
-    <View style={s.sectionHead}><Text style={s.section}>Come ti vesti</Text><Pressable accessibilityRole="button" onPress={()=>setCustomizing(value=>!value)} style={s.textButton}><Text style={s.textButtonLabel}>{customizing?'Fine':'Personalizza'}</Text></Pressable></View>
-    {customizing?<View style={s.customizer}><ChoiceRow label="Stile principale" options={styleOptions} value={style} onChange={setStyle}/><ChoiceRow label="Taglia abituale" options={sizeOptions} value={size} onChange={setSize}/><ChoiceRow label="Colore preferito" options={colorOptions} value={color} onChange={setColor}/><ChoiceRow label="Vestibilità" options={['Aderente','Regolare','Comoda']} value={fit} onChange={setFit}/></View>:<View style={s.preferenceList}><View style={s.row}><Text style={s.label}>Stile</Text><Text style={s.value}>{style}</Text></View><View style={s.row}><Text style={s.label}>Taglia abituale</Text><Text style={s.value}>{size} · 48</Text></View><View style={s.row}><Text style={s.label}>Colore preferito</Text><Text style={s.value}>{color}</Text></View><View style={s.row}><Text style={s.label}>Vestibilità</Text><Text style={s.value}>{fit}</Text></View></View>}
-    <View style={s.sectionHead}><Text style={s.section}>Preferenze</Text></View>
-    <View style={s.preferenceList}><Pressable accessibilityRole="button" onPress={()=>setStylistOn(value=>!value)} style={s.row}><View><Text style={s.labelStrong}>Stylist personale</Text><Text style={s.rowHelp}>Usa il tuo profilo per creare i look.</Text></View><Text style={[s.status,stylistOn&&s.statusOn]}>{stylistOn?'Attivo':'Disattivo'}</Text></Pressable><Pressable accessibilityRole="button" onPress={()=>setLanguageOpen(value=>!value)} style={s.row}><View><Text style={s.labelStrong}>Lingua</Text><Text style={s.rowHelp}>Lingua dell’interfaccia.</Text></View><Text style={s.value}>{language}  ›</Text></Pressable></View>
-    {languageOpen?<View style={s.languageList}>{languages.map(item=><Pressable accessibilityRole="button" key={item} onPress={()=>{setLanguage(item);setLanguageOpen(false);}} style={s.languageRow}><Text style={[s.languageText,language===item&&s.languageOn]}>{item}</Text><Text style={s.check}>{language===item?'✓':''}</Text></Pressable>)}</View>:null}
-    <View style={s.sectionHead}><Text style={s.section}>Il tuo armadio, in numeri</Text></View><View style={s.valueCard}><Text style={s.valueIndex}>€</Text><View style={{flex:1}}><Text style={s.valueTitle}>Valore inserito</Text><Text style={s.valueCopy}>Somma dei prezzi aggiunti nella demo.</Text></View><Text style={s.total}>€ {totalSpend.toFixed(2).replace('.', ',')}</Text></View>
-    <Text style={s.privacy}>Questa è una demo locale: le preferenze si azzerano quando ricarichi la pagina.</Text>
+    <View style={s.header}><Text style={s.context}>Account personale</Text><Text style={s.title}>Il tuo profilo</Text><Text style={s.subtitle}>Qui trovi i dati del tuo account e le preferenze che guideranno i consigli.</Text></View>
+    <View style={s.identity}>{profile?.avatarUrl ? <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage}/> : <View style={s.avatar}><Text style={s.initial}>{(name || user?.email || 'S').slice(0, 1).toUpperCase()}</Text></View>}<View style={s.identityCopy}><Text style={s.name}>{name || 'Il tuo profilo'}</Text><Text style={s.mail}>{user?.email}</Text><Text style={s.languages}>{profile?.preferences.languages.join(' · ')}</Text></View></View>
+    <View style={s.stats}><View style={s.stat}><Text style={s.number}>{garments.length}</Text><Text style={s.statLabel}>capi reali</Text></View><View style={s.stat}><Text style={s.number}>{new Set(garments.map(item => item.category)).size}</Text><Text style={s.statLabel}>categorie</Text></View><View style={s.stat}><Text style={s.number}>100%</Text><Text style={s.statLabel}>privato</Text></View></View>
+    <Pressable accessibilityRole="button" onPress={() => router.push('/outfits')} style={s.outfits}><View><Text style={s.outfitsTitle}>Outfit salvati</Text><Text style={s.outfitsCopy}>{outfits.length} {outfits.length === 1 ? 'combinazione nel tuo archivio' : 'combinazioni nel tuo archivio'}</Text></View><Text style={s.outfitsLink}>Apri</Text></Pressable>
+    <View style={s.form}><Text style={s.section}>Dati e preferenze</Text><Text style={s.label}>NOME VISUALIZZATO</Text><TextInput value={name} onChangeText={setName} autoComplete="name" style={s.input}/><Text style={s.label}>STILE PRINCIPALE</Text><View style={s.chips}>{styleOptions.map(item => <Pressable key={item} onPress={() => setStyle(item)} style={[s.chip, style === item && s.chipOn]}><Text style={[s.chipText, style === item && s.chipTextOn]}>{item}</Text></Pressable>)}</View>{message && <Text style={s.message}>{message}</Text>}<Pressable disabled={saving} onPress={save} style={s.save}>{saving ? <ActivityIndicator color={C.white}/> : <Text style={s.saveText}>Salva modifiche</Text>}</Pressable></View>
+    <View style={s.privacy}><Text style={s.privacyTitle}>Le tue foto restano tue.</Text><Text style={s.privacyCopy}>Il database e lo spazio immagini applicano regole per utente: un account non può leggere o modificare i capi di un altro.</Text></View>
+    <Pressable onPress={() => void signOut()} style={s.signOut}><Text style={s.signOutText}>Esci dall’account</Text></Pressable>
   </ScrollView></SafeAreaView>;
 }
 
 const s = StyleSheet.create({
-  safe:{flex:1,minHeight:0,backgroundColor:C.canvas},page:{width:'100%',maxWidth:680,alignSelf:'center',paddingHorizontal:20,paddingTop:24,paddingBottom:118,gap:22},
-  header:{gap:7},context:{color:C.sage,fontSize:12,fontWeight:'700'},title:{fontSize:36,lineHeight:42,fontWeight:'700',letterSpacing:-1.7,color:C.ink},subtitle:{fontSize:13,lineHeight:20,color:C.muted,maxWidth:440},
-  identity:{flexDirection:'row',alignItems:'center',gap:13,paddingVertical:17,borderTopWidth:1,borderBottomWidth:1,borderColor:C.line},avatar:{width:48,height:48,borderRadius:24,backgroundColor:C.sage,alignItems:'center',justifyContent:'center'},initial:{fontSize:19,fontWeight:'800',color:C.white},identityCopy:{flex:1},name:{color:C.ink,fontSize:15,fontWeight:'700'},mail:{color:C.muted,fontSize:11,marginTop:3},
-  textButton:{paddingVertical:7,paddingLeft:12},textButtonLabel:{color:C.sage,fontWeight:'700',fontSize:11},editor:{gap:10,padding:15,backgroundColor:C.surface,borderLeftWidth:2,borderLeftColor:C.sage},fieldLabel:{fontSize:10.5,color:C.muted,fontWeight:'600'},input:{height:44,borderBottomWidth:1,borderBottomColor:'#514B4C',fontSize:13,color:C.ink},save:{height:42,borderRadius:4,backgroundColor:C.sage,alignItems:'center',justifyContent:'center'},saveText:{color:C.white,fontSize:12,fontWeight:'800'},
-  stats:{flexDirection:'row',paddingVertical:18,borderBottomWidth:1,borderBottomColor:C.line},stat:{flex:1},number:{color:C.ink,fontSize:24,fontWeight:'700',fontVariant:['tabular-nums']},statLabel:{color:C.muted,fontSize:10.5,marginTop:3},sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:4},section:{color:C.ink,fontSize:18,fontWeight:'700',letterSpacing:-.4},
-  preferenceList:{borderTopWidth:1,borderTopColor:C.line},row:{minHeight:58,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12,borderBottomWidth:1,borderBottomColor:C.line},label:{color:C.muted,fontSize:12},labelStrong:{color:C.ink,fontSize:12.5,fontWeight:'700'},rowHelp:{color:C.muted,fontSize:10,marginTop:4},value:{color:C.ink,fontSize:12,fontWeight:'600'},status:{fontSize:10.5,color:C.muted,fontWeight:'700'},statusOn:{color:C.sage},
-  customizer:{gap:20,paddingVertical:4},choiceBlock:{gap:10},choiceLabel:{color:C.muted,fontSize:11,fontWeight:'600'},chips:{flexDirection:'row',flexWrap:'wrap',gap:8},chip:{paddingHorizontal:12,paddingVertical:9,borderRadius:4,borderWidth:1,borderColor:C.line},chipOn:{backgroundColor:C.sage,borderColor:C.sage},chipText:{fontSize:10.5,color:C.muted,fontWeight:'600'},chipTextOn:{color:C.white},
-  languageList:{borderLeftWidth:2,borderLeftColor:C.sage,paddingLeft:14},languageRow:{height:42,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:C.line},languageText:{color:C.muted,fontSize:12},languageOn:{color:C.ink,fontWeight:'700'},check:{color:C.sage,fontSize:12},
-  valueCard:{paddingVertical:17,borderTopWidth:1,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',alignItems:'center',gap:13},valueIndex:{width:32,color:C.sage,fontSize:20,fontWeight:'700'},valueTitle:{color:C.ink,fontSize:12.5,fontWeight:'700'},valueCopy:{color:C.muted,fontSize:10.5,marginTop:3},total:{color:C.ink,fontSize:14,fontWeight:'700',fontVariant:['tabular-nums']},privacy:{color:'#747177',fontSize:10.5,lineHeight:16},
+  safe:{flex:1,backgroundColor:C.canvas},loading:{flex:1,alignItems:'center',justifyContent:'center'},page:{width:'100%',maxWidth:680,alignSelf:'center',paddingHorizontal:20,paddingTop:24,paddingBottom:122,gap:22},header:{gap:7},context:{color:C.sage,fontSize:12,fontWeight:'700'},title:{fontSize:36,lineHeight:42,fontWeight:'700',letterSpacing:-1.7,color:C.ink},subtitle:{fontSize:13,lineHeight:20,color:C.muted,maxWidth:440},identity:{flexDirection:'row',alignItems:'center',gap:13,paddingVertical:17,borderTopWidth:1,borderBottomWidth:1,borderColor:C.line},avatar:{width:48,height:48,borderRadius:24,backgroundColor:C.sage,alignItems:'center',justifyContent:'center'},avatarImage:{width:48,height:48,borderRadius:24,backgroundColor:C.surface},initial:{fontSize:19,fontWeight:'800',color:C.white},identityCopy:{flex:1},name:{color:C.ink,fontSize:15,fontWeight:'700'},mail:{color:C.muted,fontSize:11,marginTop:3},languages:{color:C.sage,fontSize:9.5,marginTop:5},stats:{flexDirection:'row',paddingVertical:18,borderBottomWidth:1,borderBottomColor:C.line},stat:{flex:1},number:{color:C.ink,fontSize:24,fontWeight:'700'},statLabel:{color:C.muted,fontSize:10.5,marginTop:3},form:{gap:14},section:{color:C.ink,fontSize:18,fontWeight:'700'},label:{color:C.muted,fontSize:9,fontWeight:'900',letterSpacing:1.1},input:{minHeight:46,borderBottomWidth:1,borderBottomColor:'#4A4646',color:C.ink,fontSize:13},chips:{flexDirection:'row',flexWrap:'wrap',gap:8},chip:{minHeight:40,paddingHorizontal:12,borderRadius:4,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},chipOn:{backgroundColor:C.sage,borderColor:C.sage},chipText:{fontSize:10.5,color:C.muted,fontWeight:'700'},chipTextOn:{color:C.white},message:{color:C.sage,fontSize:11},save:{minHeight:48,borderRadius:5,backgroundColor:C.sage,alignItems:'center',justifyContent:'center'},saveText:{color:C.white,fontSize:12,fontWeight:'900'},privacy:{paddingVertical:17,borderTopWidth:1,borderBottomWidth:1,borderColor:C.line,gap:5},privacyTitle:{color:C.ink,fontSize:13,fontWeight:'800'},privacyCopy:{color:C.muted,fontSize:11,lineHeight:17},signOut:{minHeight:48,borderWidth:1,borderColor:'#60342C',borderRadius:5,alignItems:'center',justifyContent:'center'},signOutText:{color:'#FF8B78',fontSize:12,fontWeight:'800'},outfits:{minHeight:68,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:15,borderRadius:7,backgroundColor:C.surface,borderWidth:1,borderColor:C.line},outfitsTitle:{color:C.ink,fontSize:13,fontWeight:'900'},outfitsCopy:{color:C.muted,fontSize:10.5,marginTop:4},outfitsLink:{color:C.sage,fontSize:10.5,fontWeight:'900'},
 });
