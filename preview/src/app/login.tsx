@@ -10,9 +10,15 @@ type Mode = 'login' | 'signup';
 function humanizeAuthError(message: string) {
   const lower = message.toLowerCase();
   if (lower.includes('invalid login')) return 'Email o password non corretti.';
+  if (lower.includes('email not confirmed')) return 'Email non ancora confermata. Puoi richiedere un nuovo link qui sotto.';
   if (lower.includes('already registered')) return 'Esiste già un account con questa email.';
   if (lower.includes('password')) return 'La password deve contenere almeno 8 caratteri.';
   return message;
+}
+
+function confirmationRedirectUrl() {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/login`;
 }
 
 export default function LoginScreen() {
@@ -44,7 +50,10 @@ export default function LoginScreen() {
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { display_name: name.trim() } },
+          options: {
+            data: { display_name: name.trim() },
+            emailRedirectTo: confirmationRedirectUrl(),
+          },
         });
         if (error) throw error;
         if (!data.session) {
@@ -55,6 +64,33 @@ export default function LoginScreen() {
     } catch (cause) {
       setIsError(true);
       setMessage(humanizeAuthError(cause instanceof Error ? cause.message : 'Accesso non riuscito.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    if (!supabase) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes('@')) {
+      setIsError(true);
+      setMessage('Inserisci prima l’email usata per creare l’account.');
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    setIsError(false);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: cleanEmail,
+        options: { emailRedirectTo: confirmationRedirectUrl() },
+      });
+      if (error) throw error;
+      setMessage('Nuova email inviata. Usa questo nuovo link: quello precedente contiene ancora l’indirizzo locale.');
+    } catch (cause) {
+      setIsError(true);
+      setMessage(humanizeAuthError(cause instanceof Error ? cause.message : 'Invio non riuscito.'));
     } finally {
       setBusy(false);
     }
@@ -84,6 +120,7 @@ export default function LoginScreen() {
               {message && <Text accessibilityRole="alert" style={[s.message, isError && s.error]}>{message}</Text>}
               <Pressable accessibilityRole="button" disabled={busy} onPress={submit} style={[s.submit, busy && s.disabled]}>{busy ? <ActivityIndicator color={C.white}/> : <Text style={s.submitText}>{mode === 'login' ? 'Accedi al mio armadio' : 'Crea il mio account'}</Text>}</Pressable>
               <Pressable accessibilityRole="button" onPress={() => { setMode(mode === 'login' ? 'signup' : 'login'); setMessage(null); }} style={s.switch}><Text style={s.switchText}>{mode === 'login' ? 'Non hai un account? ' : 'Hai già un account? '}<Text style={s.switchAccent}>{mode === 'login' ? 'Registrati' : 'Accedi'}</Text></Text></Pressable>
+              {mode === 'login' && <Pressable accessibilityRole="button" disabled={busy} onPress={() => void resendConfirmation()} style={s.resend}><Text style={s.resendText}>Conferma non arrivata? Reinvia email</Text></Pressable>}
             </View>
           )}
           <Text style={s.foot}>Nessuna foto viene usata per addestrare modelli senza un consenso specifico.</Text>
@@ -94,5 +131,5 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:{flex:1,backgroundColor:C.canvas},flex:{flex:1},page:{width:'100%',maxWidth:540,alignSelf:'center',paddingHorizontal:24,paddingTop:18,paddingBottom:36,gap:34},brandRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},brand:{color:C.ink,fontSize:21,fontWeight:'900',letterSpacing:1},dot:{color:C.sage},private:{color:C.muted,fontSize:9,fontWeight:'800',letterSpacing:1.2},hero:{gap:10,marginTop:22},eyebrow:{color:C.sage,fontSize:10,fontWeight:'900',letterSpacing:1.4},title:{color:C.ink,fontSize:46,lineHeight:48,fontWeight:'700',letterSpacing:-2.4},copy:{color:C.muted,fontSize:13,lineHeight:20,maxWidth:420},form:{gap:18},field:{gap:8},label:{color:C.muted,fontSize:9,fontWeight:'900',letterSpacing:1.2},input:{minHeight:50,borderBottomWidth:1,borderBottomColor:'#4A4646',color:C.ink,fontSize:14,paddingHorizontal:0},message:{color:C.sage,fontSize:12,lineHeight:18},error:{color:'#FF8B78'},submit:{minHeight:56,borderRadius:6,backgroundColor:C.sage,paddingHorizontal:17,alignItems:'center',justifyContent:'center'},disabled:{opacity:.6},submitText:{color:C.white,fontSize:13,fontWeight:'900'},switch:{minHeight:44,alignItems:'center',justifyContent:'center'},switchText:{color:C.muted,fontSize:12},switchAccent:{color:C.ink,fontWeight:'800'},setup:{borderTopWidth:1,borderBottomWidth:1,borderColor:C.line,paddingVertical:22,gap:8},setupTitle:{color:C.ink,fontSize:16,fontWeight:'800'},setupCopy:{color:C.muted,fontSize:12,lineHeight:19},foot:{color:'#747177',fontSize:10,lineHeight:16,marginTop:'auto'},
+  safe:{flex:1,backgroundColor:C.canvas},flex:{flex:1},page:{width:'100%',maxWidth:540,alignSelf:'center',paddingHorizontal:24,paddingTop:18,paddingBottom:36,gap:34},brandRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},brand:{color:C.ink,fontSize:21,fontWeight:'900',letterSpacing:1},dot:{color:C.sage},private:{color:C.muted,fontSize:9,fontWeight:'800',letterSpacing:1.2},hero:{gap:10,marginTop:22},eyebrow:{color:C.sage,fontSize:10,fontWeight:'900',letterSpacing:1.4},title:{color:C.ink,fontSize:46,lineHeight:48,fontWeight:'700',letterSpacing:-2.4},copy:{color:C.muted,fontSize:13,lineHeight:20,maxWidth:420},form:{gap:18},field:{gap:8},label:{color:C.muted,fontSize:9,fontWeight:'900',letterSpacing:1.2},input:{minHeight:50,borderBottomWidth:1,borderBottomColor:'#4A4646',color:C.ink,fontSize:14,paddingHorizontal:0},message:{color:C.sage,fontSize:12,lineHeight:18},error:{color:'#FF8B78'},submit:{minHeight:56,borderRadius:6,backgroundColor:C.sage,paddingHorizontal:17,alignItems:'center',justifyContent:'center'},disabled:{opacity:.6},submitText:{color:C.white,fontSize:13,fontWeight:'900'},switch:{minHeight:44,alignItems:'center',justifyContent:'center'},switchText:{color:C.muted,fontSize:12},switchAccent:{color:C.ink,fontWeight:'800'},resend:{minHeight:42,alignItems:'center',justifyContent:'center',marginTop:-12},resendText:{color:C.sage,fontSize:10.5,fontWeight:'800'},setup:{borderTopWidth:1,borderBottomWidth:1,borderColor:C.line,paddingVertical:22,gap:8},setupTitle:{color:C.ink,fontSize:16,fontWeight:'800'},setupCopy:{color:C.muted,fontSize:12,lineHeight:19},foot:{color:'#747177',fontSize:10,lineHeight:16,marginTop:'auto'},
 });
